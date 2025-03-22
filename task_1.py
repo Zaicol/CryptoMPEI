@@ -188,7 +188,7 @@ print_matrix(matrix_inv, "Обратная матрица:")
 
 print_matrix(multiply_matrices(matrix_M, matrix_inv, p), "Перемножение M и M^-1")
 
-u1 = (random.randint(10 ** 3, 10 ** 9), random.randint(10 ** 3, 10 ** 9))
+u1 = (random.randint(10 ** 2, 10 ** 6), random.randint(10 ** 2, 10 ** 6))
 c1 = encode(u1, matrix_M, p)
 u_dec = encode(c1, matrix_inv, p)
 print("Открытый текст:", u1)
@@ -252,21 +252,6 @@ def crypto_analysis(u1, c1, u2, c2, p):
     return [[m11, m12], [m21, m22]]
 
 
-# Функция для криптоанализа
-def find_original_matrix(u1, c1, u2, c2, p):
-    # Формируем матрицу X из открытых текстов
-    X = [[u1[0], u1[1]], [u2[0], u2[1]]]
-    # Формируем матрицу C из шифртекстов
-    C = [[c1[0], c1[1]], [c2[0], c2[1]]]
-
-    # Находим обратную матрицу для X по модулю p
-    X_inv = inverse_matrix(X, p)
-
-    # Вычисляем матрицу M как M = X_inv * C mod p
-    M = multiply_matrices(X_inv, C, p)
-    return M
-
-
 # Генерируем вторую пару (u2, c2)
 u2 = (random.randint(10 ** 3, 10 ** 9), random.randint(10 ** 3, 10 ** 9))
 c2 = encode(u2, matrix_M, p)
@@ -301,6 +286,19 @@ recovered_matrix = [list(c2), list(c1)]
 print_matrix(recovered_matrix, "Восстановленная матрица M:")
 
 if recovered_matrix == matrix_M:
+    print("Восстановленная матрица совпадает с исходной!")
+else:
+    print("Ошибка: восстановленная матрица не совпадает с исходной.")
+
+u1 = (0, 1)
+c1 = encode(u1, matrix_inv, p)
+u2 = (1, 0)
+c2 = encode(u2, matrix_inv, p)
+
+recovered_matrix = [list(c2), list(c1)]
+print_matrix(recovered_matrix, "Восстановленная матрица M^-1:")
+
+if recovered_matrix == matrix_inv:
     print("Восстановленная матрица совпадает с исходной!")
 else:
     print("Ошибка: восстановленная матрица не совпадает с исходной.")
