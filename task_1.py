@@ -1,33 +1,100 @@
 import random
-from sympy import solve
+import math
+
+from tabulate import tabulate
 
 
-def is_prime(num):
-    if num < 2:
-        return False
-    # Проверяем делители до sqrt(num)
-    for i in range(2, int(num ** 0.5) + 1):
-        if num % i == 0:
+def getSieve(n):
+    """
+    Реализация решета Эратосфена для нахождения всех простых чисел до n.
+    Возвращает список простых чисел.
+    """
+    # Создаем массив isprime, где isprime[i] = True, если i предположительно простое число
+    isprime = [True for _ in range(n)]
+    prime = []
+    spf = [None for _ in range(n)]
+
+    # Числа 0 и 1 не являются простыми
+    isprime[0] = isprime[1] = False
+
+    # Проходим по всем числам от 2 до n-1
+    for i in range(2, n):
+        if isprime[i]:  # Если i предположительно простое
+            prime.append(i)  # Добавляем его в список простых чисел
+            spf[i] = i  # Наименьший простой делитель числа i — это само число i
+
+        # Обновляем массив isprime, помечая составные числа как False
+        j = 0
+        while j < len(prime) and i * prime[j] < n and prime[j] <= spf[i]:
+            isprime[i * prime[j]] = False
+            spf[i * prime[j]] = prime[j]
+            j += 1
+
+    return prime  # Возвращаем список простых чисел
+
+
+def is_probably_prime(n, sieve):
+    """
+    Проверяет, является ли число n вероятно простым, используя список простых чисел из решета.
+    Возвращает False, если n делится на любое из простых чисел из решета.
+    """
+    for x in sieve:
+        if n % x == 0:
             return False
     return True
 
 
-# Функция для поиска первого простого числа длиной 49 символов
-def find_prime_of_length_12():
-    # Начинаем с числа 10^48 (первое число длиной 49 символов)
-    num = 10 ** 12
-    # Убедимся, что начинаем с нечётного числа
-    if num % 2 == 0:
-        num += 1
-    # Ищем первое простое число
-    while True:
-        if is_prime(num):
-            return num
-        num += 2  # Переходим к следующему нечётному числу
+def generatePrime(n: int):
+    """
+    Генерирует простое число длиной n десятичных цифр.
+    Использует алгоритм, основанный на решете Эратосфена и тестах на простоту.
+    """
+    up_limit = 10 ** n  # Верхний предел для генерации числа (10^n)
+    lower_limit = up_limit // 10  # Нижний предел для генерации числа (10^n)
+    primes = getSieve(1000)
+    s = primes[-1]  # Начинаем с наибольшего простого числа из решета
+
+    # Основной цикл для генерации простого числа
+    while s < lower_limit:
+        lo = (lower_limit - 1) // s + 1  # Минимальное значение r
+        hi = (up_limit - 1) // s  # Максимальное значение r
+
+        while True:
+            # Генерируем случайное число r и вычисляем кандидата на простое число n
+            try:
+                r = random.randint(lo, hi) << 1  # r — четное случайное число
+            except ValueError:
+                print((up_limit - 1), s, hi)
+                r = random.randint(lo, hi + 1)
+            cand = s * r + 1  # Формула для нового кандидата на простое число
+
+            # Проверяем, является ли n вероятно простым
+            if not is_probably_prime(cand, primes):
+                continue
+
+            # Проводим дополнительную проверку на простоту с помощью теста Ферма
+            while True:
+                a = random.randint(2, cand - 1)
+                if pow(a, cand - 1, cand) != 1:  # Проверяем малую теорему Ферма
+                    break
+
+                # Проверяем НОД для дополнительной уверенности
+                d = math.gcd((pow(a, r, cand) - 1) % cand, cand)
+                if d != cand:
+                    if d == 1:  # Если НОД равен 1, n вероятно простое
+                        s = cand
+                    break
+
+            if s == cand:
+                break
+
+    if s > up_limit:
+        return generatePrime(n)
+    return s
 
 
 def get_new_matrix():
-    return [[random.randint(10 ** 7, 10 ** 10), random.randint(3, 30)],
+    return [[random.randint(10 ** 10, 10 ** 15), random.randint(3, 30)],
             [random.randint(3, 30), random.randint(3, 30)]]
 
 
@@ -59,8 +126,8 @@ def inverse_matrix(matrix, p):
 
     # Строим обратную матрицу
     inv_matrix = [
-        [(matrix[1][1] * det_inv) % p, (p-matrix[0][1] * det_inv) % p],
-        [(p-matrix[1][0] * det_inv) % p, (matrix[0][0] * det_inv) % p]
+        [(matrix[1][1] * det_inv) % p, (p - matrix[0][1] * det_inv) % p],
+        [(p - matrix[1][0] * det_inv) % p, (matrix[0][0] * det_inv) % p]
     ]
     return inv_matrix
 
@@ -99,15 +166,14 @@ def encode(ciphersize, matrix, p):
 
 def print_matrix(matrix, name):
     print(name)
-    s = [[str(e) for e in row] for row in matrix]
-    lens = [max(map(len, col)) for col in zip(*s)]
-    fmt = '\t'.join('{{:{}}}'.format(x) for x in lens)
-    table = [fmt.format(*row) for row in s]
-    print('\n'.join(table))
+    str_matrix = [[str(e) for e in row] for row in matrix]
+    # Используем tabulate для форматированного вывода матрицы
+    print(tabulate(str_matrix, tablefmt="grid"))
     print()
 
 
-p = find_prime_of_length_12()
+p = generatePrime(49)
+print("p =", p)
 matrix_M = get_new_matrix()
 det_M = determinant(matrix_M)
 
@@ -133,7 +199,6 @@ if u1 == u_dec:
     print("Открытый и расшифрованный текст - совпадают")
 else:
     print("Открытый и расшифрованный текст - не совпадают!")
-
 
 print("\n" + "=" * 60 + "\n\nЗадание 2\n\n")
 
@@ -173,18 +238,19 @@ def crypto_analysis(u1, c1, u2, c2, p):
     m11, m21 = solve_mod_system(
         x11, x12, y11,  # Коэффициенты первого уравнения
         x21, x22, y21,  # Коэффициенты второго уравнения
-        p               # Модуль
+        p  # Модуль
     )
 
     # Решаем вторую подсистему для m12 и m22
     m12, m22 = solve_mod_system(
         x11, x12, y12,  # Коэффициенты первого уравнения
         x21, x22, y22,  # Коэффициенты второго уравнения
-        p               # Модуль
+        p  # Модуль
     )
 
     # Возвращаем восстановленную матрицу M
     return [[m11, m12], [m21, m22]]
+
 
 # Функция для криптоанализа
 def find_original_matrix(u1, c1, u2, c2, p):
@@ -224,9 +290,7 @@ if recovered_matrix == matrix_M:
 else:
     print("Ошибка: восстановленная матрица не совпадает с исходной.")
 
-
 print("\n" + "=" * 60 + "\n\nЗадание 3\n\n")
-
 
 u1 = (0, 1)
 c1 = encode(u1, matrix_M, p)
@@ -240,82 +304,3 @@ if recovered_matrix == matrix_M:
     print("Восстановленная матрица совпадает с исходной!")
 else:
     print("Ошибка: восстановленная матрица не совпадает с исходной.")
-
-
-
-print("\n" + "=" * 60 + "\n\nЗадание 4\n\n")
-
-# Определяем алфавит
-alphabet = "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ"
-n = len(alphabet)
-
-
-# Функция для преобразования текста в числовую форму
-def text_to_numbers(text):
-    return [alphabet.index(char) for char in text]
-
-
-# Функция для преобразования чисел в текст
-def numbers_to_text(numbers):
-    return "".join([alphabet[num] for num in numbers])
-
-
-# Расширенный алгоритм Евклида для нахождения обратного элемента
-def mod_inverse(a, n):
-    g, x, _ = extended_gcd(a, n)
-    if g != 1:
-        return None  # Обратного элемента нет
-    return x % n
-
-
-# Расширенный алгоритм Евклида
-def extended_gcd(a, b):
-    if b == 0:
-        return a, 1, 0
-    else:
-        g, x, y = extended_gcd(b, a % b)
-        return g, y, x - (a // b) * y
-
-
-# Функция расшифровки
-def decrypt_affine(ciphertext, a, b):
-    a_inv = mod_inverse(a, n)
-    if a_inv is None:
-        raise ValueError("Обратный элемент для 'a' не существует")
-
-    ciphertext_numbers = text_to_numbers(ciphertext)
-    plaintext_numbers = [(a_inv * (y - b)) % n for y in ciphertext_numbers]
-    return numbers_to_text(plaintext_numbers)
-
-
-# Шифртексты
-ciphertext_1 = "ШЭКЧРЧЦБКЭДЦНЦНЭЦБЧЪЗОЭЪЭШЭСКХ"
-ciphertext_2 = "СЙОЧЛУДЦФЁЬРЧЙЮЕЧДГЮЕСЁРЙСЁЯЁГ"
-
-
-def check_combinations(combs, text):
-    for c in combs:
-        if c in text:
-            return False
-    return True
-
-
-# Подбор ключей a и b
-def brute_force_decrypt(ciphertext):
-    for a in [1, 2, 4, 5, 7, 8, 10, 11, 13, 14, 16, 17, 19, 20, 23, 25, 26, 28, 29, 31, 32]:
-        for b in range(n):
-            try:
-                plaintext = decrypt_affine(ciphertext, a, b)
-                if check_combinations(["ЁЯ", "ЦЩ", "ХЯ"] + [n + "Ь" for n in "АОУИЕЙЪЭЫЯЮ"], plaintext):
-                    print(f"a = {a}, b = {b}: {plaintext}")
-            except ValueError:
-                continue
-
-
-# Запускаем подбор для первого шифртекста
-print("Подбор ключей для первого шифртекста:")
-brute_force_decrypt(ciphertext_1)
-
-# Запускаем подбор для второго шифртекста
-print("\nПодбор ключей для второго шифртекста:")
-brute_force_decrypt(ciphertext_2)
